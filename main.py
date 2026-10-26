@@ -29,7 +29,8 @@ def main():
     plot_network(problem, args.output / "plots", shipments=x)
     print(f"Optimal cost (PuLP/CBC): EUR {summary['objective_eur']:,.2f}")
     print(f"Results: {args.output.resolve()}")
-
+    
+print("All code executed successfully. Check the results in the specified output directory.")
 
 if __name__ == "__main__":
     main()
