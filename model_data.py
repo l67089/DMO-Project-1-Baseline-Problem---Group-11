@@ -26,6 +26,14 @@ class Problem:
     capacity: np.ndarray     # C[i], length m: equivalent handling capacity.
     handling: np.ndarray     # w[k], length p: handling effort per resource unit.
     rate: np.ndarray         # r[k], length p: transport cost in euros/unit/km.
+    trucks_available: np.ndarray  # N[i]: given number of trucks, not a decision variable.
+    truck_capacity: np.ndarray    # Q[i]: cargo-space capacity of one truck.
+    cargo_volume: np.ndarray      # v[k]: space occupied by one resource unit.
+
+    @property
+    def fleet_capacity(self):
+        # Total dispatch volume permitted during this planning period.
+        return self.trucks_available * self.truck_capacity
 
 
 def read_data(path: Path) -> Problem:
@@ -92,6 +100,20 @@ def read_data(path: Path) -> Problem:
         capacity=np.array([row["handling_capacity_equiv"] for row in centres], dtype=float),
         handling=np.array([row["handling_equiv_per_unit"] for row in resources], dtype=float),
         rate=np.array([row["transport_rate_eur_per_unit_km"] for row in resources], dtype=float),
+        trucks_available=np.array([row["trucks_available"] for row in centres], dtype=float),
+        truck_capacity=np.array([row["truck_capacity"] for row in centres], dtype=float),
+        cargo_volume=np.array([row["cargo_volume_per_unit"] for row in resources], dtype=float),
     )
+    # Truck capacity and cargo volume must use the same space unit.
+    for values in (problem.trucks_available, problem.truck_capacity, problem.cargo_volume):
+        if not np.isfinite(values).all() or (values < 0).any():
+            raise ValueError("Fleet and cargo-volume inputs must be finite and nonnegative")
+    if not np.equal(problem.trucks_available, np.floor(problem.trucks_available)).all():
+        raise ValueError("trucks_available must contain whole truck counts")
+    # Recompute the product instead of relying on a possibly stale Excel formula.
+    if all(row.get("fleet_capacity") is not None for row in centres):
+        declared = np.array([row["fleet_capacity"] for row in centres], dtype=float)
+        if not np.allclose(declared, problem.fleet_capacity, rtol=1e-7, atol=1e-7):
+            raise ValueError("fleet_capacity must equal trucks_available * truck_capacity")
     # main.py receives this object and passes it to the solver and analysis.
     return problem

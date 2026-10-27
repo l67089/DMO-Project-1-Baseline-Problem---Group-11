@@ -29,3 +29,16 @@ def write_results(problem, x, distances, costs, summary, output):
 def write_dual(dual, output):
     write_csv(output / "shadow_prices.csv", dual,
               ["family", "target", "rhs", "activity", "slack", "binding", "shadow_price_eur_per_unit"])
+
+
+def write_fleet(problem, shipments, model, output):
+    used = shipments.sum(axis=1) @ problem.cargo_volume
+    rows = [dict(
+        centre_id=centre, trucks_available=float(problem.trucks_available[i]),
+        capacity_per_truck=float(problem.truck_capacity[i]),
+        fleet_capacity=float(problem.fleet_capacity[i]), utilized_capacity=float(used[i]),
+        remaining_capacity=float(problem.fleet_capacity[i] - used[i]),
+        utilization_pct=float(100 * used[i] / problem.fleet_capacity[i]) if problem.fleet_capacity[i] else None,
+        shadow_price_eur_per_volume=float(model.get_constraint_by_name(f"Fleet_{centre}").pi),
+    ) for i, centre in enumerate(problem.centres)]
+    write_csv(output / "fleet_capacity.csv", rows)

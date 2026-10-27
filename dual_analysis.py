@@ -1,10 +1,10 @@
-"""Analyze the dual values of the solved transportation LP."""
+"""Analyze the dual values of the solved transportation LP. hello"""
 
 from optimization import TOLERANCE
 
 
 def constraint_metadata(problem):
-    """List the names, locations and RHS values of the 48 constraints."""
+    """List the names, locations and RHS values of the model's constraints."""
     rows = []
     # Demand is indexed by region/resource; supply by centre/resource.
     for family, values, ids in (("demand", problem.demand, problem.regions),
@@ -20,6 +20,10 @@ def constraint_metadata(problem):
         # Capacity has one value per centre.
         rows.append(dict(family="capacity", target=centre, rhs=float(problem.capacity[i]),
                          constraint_name=f"Capacity_{centre}"))
+    for i, centre in enumerate(problem.centres):
+        # Fleet shadow prices are euros per extra cargo-space unit.
+        rows.append(dict(family="fleet", target=centre, rhs=float(problem.fleet_capacity[i]),
+                         constraint_name=f"Fleet_{centre}"))
     return rows
 
 

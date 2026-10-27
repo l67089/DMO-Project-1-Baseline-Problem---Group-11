@@ -1,0 +1,4 @@
+centre_id,trucks_available,capacity_per_truck,fleet_capacity,utilized_capacity,remaining_capacity,utilization_pct,shadow_price_eur_per_volume
+L1,9.0,30.0,270.0,227.4,42.599999999999994,84.22222222222223,0.0
+L2,8.0,30.0,240.0,240.0,0.0,100.0,-61.484358
+L3,9.0,30.0,270.0,231.5,38.5,85.74074074074075,0.0

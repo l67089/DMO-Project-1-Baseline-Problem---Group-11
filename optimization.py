@@ -63,6 +63,17 @@ def formulate(problem: Problem):
             f"Capacity_{centre}",
         )
 
+    # Fleet volume: sum_j sum_k v[k] * x[i,j,k] <= N[i] * Q[i].
+    # Truck counts are fixed data. All shipment variables remain continuous.
+    for i, centre in enumerate(problem.centres):
+        model += (
+            pulp.lpSum(float(problem.cargo_volume[k]) * x[centre, region, resource]
+                       for region in problem.regions
+                       for k, resource in enumerate(problem.resources))
+            <= float(problem.fleet_capacity[i]),
+            f"Fleet_{centre}",
+        )
+
     return model, x, distances, costs
 
 

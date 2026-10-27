@@ -18,6 +18,8 @@ one centre to one region. The model must:
 - Keep dispatches within each centre's available resource stock.
 - Respect each centre's handling capacity, accounting for the different
   handling effort required by each resource.
+- Keep total dispatched cargo volume within the capacity of each centre's
+  available truck fleet.
 
 Transportation costs equal the straight-line distance between locations
 multiplied by a resource-specific rate in euros per unit per kilometre.
@@ -25,24 +27,51 @@ Shipments are continuous, so fractional quantities are permitted. All centres
 can supply all regions directly.
 
 The LP is formulated in **PuLP** and solved with **CBC**. The supplied dataset
-produces 90 shipment variables and 48 demand, supply, and handling constraints.
+produces 90 continuous shipment variables and 51 demand, supply, handling,
+and fleet constraints. There are no truck assignment or integer variables.
 The project also extracts constraint shadow prices and plots the locations
 and routes used by the optimal solution.
 
 ## Input data
 
-The default workbook is `Data/Data DMO Project 1.xlsx`.
+The default workbook is `Data/Data DMO Project 1 Updated.xlsx`.
 
 | Sheet | Contents |
 | --- | --- |
-| Centres | Centre IDs, coordinates, and handling capacities |
+| Centres | Centre IDs, coordinates, handling capacity, `trucks_available`, `truck_capacity`, and `fleet_capacity` |
 | Regions | Region IDs and coordinates |
-| Resources | Resource IDs, handling factors, and transport rates |
+| Resources | Resource IDs, handling factors, transport rates, and `cargo_volume_per_unit` |
 | Supply | Available stock for each centre/resource pair |
 | Demand | Minimum requirements for each region/resource pair |
 
 The workbook is opened read-only. Resource IDs K1–K5 are translated to V1–V5
 in Python and the outputs to match the assignment PDF; Excel is not modified.
+The code recomputes fleet capacity as trucks available × capacity per truck
+and checks the workbook's `fleet_capacity` value when present. Cargo volumes
+and truck capacities use the same space units supplied in the dataset.
+
+## Fleet constraint and dual
+
+Let `N[i]` be available trucks, `Q[i]` capacity per truck, and `v[k]` space
+per resource unit. All are fixed inputs. The added constraint is:
+
+```text
+sum(j,k) v[k] * x[i,j,k] <= F[i], where F[i] = N[i] * Q[i]
+```
+
+The original objective and all demand, stock and handling constraints remain.
+With demand prices π ≥ 0 and stock, handling and fleet prices μ, ν, λ ≤ 0,
+the updated dual is:
+
+```text
+max  sum(j,k) D[j,k]*π[j,k] + sum(i,k) S[i,k]*μ[i,k]
+     + sum(i) C[i]*ν[i] + sum(i) F[i]*λ[i]
+s.t. π[j,k] + μ[i,k] + w[k]*ν[i] + v[k]*λ[i] <= c[i,j,k]
+```
+
+Fleet prices are euros per additional cargo-space unit. They describe a local
+change in the optimal transport cost; they need not remain valid for a larger
+capacity change.
 
 ## Running the project
 
@@ -85,6 +114,7 @@ results/
   solution/
     shipments.csv       # Shipment quantities, distances, and costs
     summary.json        # Solver status, objective values, and model size
+    fleet_capacity.csv  # Trucks, capacity, utilized/remaining volume, utilization %, and price
   dual/
     shadow_prices.csv   # RHS values, activity, slack, and shadow prices
   plots/
@@ -92,6 +122,6 @@ results/
     solution_map.png    # Arrows showing routes with positive shipments
 ```
 
-Shadow prices use the original constraint signs, in euros per resource unit
-or equivalent handling unit. Both maps use the workbook's planar coordinates,
+Shadow prices use the original constraint signs, in euros per resource unit,
+equivalent handling unit, or cargo-space unit. Both maps use the workbook's planar coordinates,
 with axes in kilometres and labels matching sets L and R.
