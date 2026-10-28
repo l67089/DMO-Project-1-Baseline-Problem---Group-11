@@ -28,7 +28,8 @@ def write_results(problem, x, distances, costs, summary, output):
 
 def write_dual(dual, output):
     write_csv(output / "shadow_prices.csv", dual,
-              ["family", "target", "rhs", "activity", "slack", "binding", "shadow_price_eur_per_unit"])
+              ["family", "target", "rhs", "activity", "slack", "binding", "shadow_price_eur_per_unit",
+               "allowable_increase", "allowable_decrease"])
 
 
 def write_fleet(problem, shipments, model, output):

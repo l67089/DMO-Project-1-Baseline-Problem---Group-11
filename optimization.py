@@ -1,6 +1,10 @@
 """Formulate and solve the continuous transportation LP using the PuLP/CBC module"""
 
 # Importing libraries.
+import csv
+from pathlib import Path
+from tempfile import TemporaryDirectory
+
 import numpy as np
 import pulp
 
@@ -88,10 +92,34 @@ def shipment_values(problem, variables):
 def solve(problem: Problem):
     """Build the model, solve it and return the results used by main.py."""
     model, variables, distances, costs = formulate(problem)
-    # mip=False requests a continuous LP solve, providing dual prices.
-    result = model.solve(pulp.COIN_CMD(msg=False, mip=False))
-    if result.status != pulp.LpSolveStatus.Optimal:
-        raise RuntimeError(f"PuLP/CBC: {result.status_str}")
+    # CBC's native RHS-ranging report gives increases/decreases that preserve
+    # its optimal simplex basis. Use a temporary file, not a new results report.
+    with TemporaryDirectory(prefix="dmo_rhs_") as temporary:
+        report = Path(temporary) / "rhs_ranges.csv"
+        solver = pulp.COIN_CMD(
+            msg=False, mip=False, presolve=False,
+            options=["initialSolve", "printingOptions rhsranging", f"solution {report}"],
+        )
+        result = model.solve(solver)
+        if result.status != pulp.LpSolveStatus.Optimal:
+            raise RuntimeError(f"PuLP/CBC: {result.status_str}")
+        constraints = model.constraints()
+        rhs_ranges = {}
+        with report.open(newline="") as stream:
+            rows = csv.reader(stream)
+            next(rows)  # Native report header: row, name, increase, ..., decrease, ...
+            for row in rows:
+                index = int(row[0])
+                # PuLP writes MPS rows in this order, renamed C0000000, etc.
+                if row[1] != f"C{index:07d}":
+                    raise RuntimeError("Unexpected CBC constraint name in RHS-ranging report")
+                increase, decrease = float(row[2]), float(row[4])
+                rhs_ranges[constraints[index].name] = dict(
+                    allowable_increase=float("inf") if increase >= 1e99 else max(0., increase),
+                    allowable_decrease=float("inf") if decrease >= 1e99 else max(0., decrease),
+                )
+        if len(rhs_ranges) != model.numConstraints():
+            raise RuntimeError("CBC did not report RHS ranges for every constraint")
 
     shipments = shipment_values(problem, variables)
     summary = {
@@ -103,4 +131,4 @@ def solve(problem: Problem):
         "functional_constraints": model.numConstraints(),
         "positive_shipments": int(np.count_nonzero(shipments > TOLERANCE)),
     }
-    return shipments, distances, costs, summary, model
+    return shipments, distances, costs, summary, model, rhs_ranges

@@ -116,7 +116,7 @@ results/
     summary.json        # Solver status, objective values, and model size
     fleet_capacity.csv  # Trucks, capacity, utilized/remaining volume, utilization %, and price
   dual/
-    shadow_prices.csv   # RHS values, activity, slack, and shadow prices
+    shadow_prices.csv   # RHS values, slack, shadow prices, and allowable changes
   plots/
     network_map.png     # Logistics centres and affected regions
     solution_map.png    # Arrows showing routes with positive shipments
@@ -125,3 +125,21 @@ results/
 Shadow prices use the original constraint signs, in euros per resource unit,
 equivalent handling unit, or cargo-space unit. Both maps use the workbook's planar coordinates,
 with axes in kilometres and labels matching sets L and R.
+
+## Allowable RHS changes
+
+`shadow_prices.csv` includes `allowable_increase` and `allowable_decrease` for
+each demand, supply, handling and fleet constraint. These come from CBC's native
+RHS-ranging report and preserve its current optimal simplex basis. Change one
+RHS at a time, holding all other inputs fixed. Inside the range, the objective
+change is the shadow price multiplied by the RHS change; shipment quantities
+can change. At the endpoints another basis may become optimal.
+
+Allowances use the RHS units: resource quantities, equivalent handling units,
+or fleet cargo-space units. They are not percentage changes or truck counts.
+`inf` means no basis limit in that direction, while zero can be legitimate
+for a degenerate basis. Physical inputs should still remain nonnegative.
+Ranges can differ between optimal bases when multiple bases are available.
+
+The calculation uses PuLP/CBC only. No scenario files or extra solver are added.
+See the [CBC printing-options documentation](https://github.com/coin-or/Cbc/blob/master/doc/cbc-parameters.md#printingoptions).

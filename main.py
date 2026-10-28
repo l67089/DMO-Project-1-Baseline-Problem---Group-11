@@ -20,8 +20,8 @@ def main():
     args = parser.parse_args()
 
     problem = read_data(args.data)
-    x, distances, costs, summary, model = solve(problem)
-    dual = analyze_dual(problem, model)
+    x, distances, costs, summary, model, rhs_ranges = solve(problem)
+    dual = analyze_dual(problem, model, rhs_ranges)
 
     write_results(problem, x, distances, costs, summary, args.output / "solution")
     write_dual(dual, args.output / "dual")

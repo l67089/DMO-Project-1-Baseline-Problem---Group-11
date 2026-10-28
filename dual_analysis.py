@@ -27,8 +27,8 @@ def constraint_metadata(problem):
     return rows
 
 
-def analyze_dual(problem, model):
-    """Read shadow prices from the already solved PuLP model."""
+def analyze_dual(problem, model, rhs_ranges):
+    """Read shadow prices and allowable RHS changes from the solved LP."""
     # problem holds the inputs; model holds the solved LP.
     constraints = []
     for metadata in constraint_metadata(problem):
@@ -55,6 +55,9 @@ def analyze_dual(problem, model):
         # Binding means there is effectively no slack, allowing numerical noise.
         entry = dict(**metadata, activity=activity,
                      slack=slack, binding=bool(slack <= TOLERANCE), shadow_price_eur_per_unit=price)
+        # Both allowances refer to this original RHS, with all others fixed.
+        # A zero allowance can occur at a degenerate optimal basis.
+        entry.update(rhs_ranges[metadata["constraint_name"]])
 
         constraints.append(entry)
 
