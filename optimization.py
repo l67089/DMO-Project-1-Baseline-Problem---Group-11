@@ -67,8 +67,8 @@ def formulate(problem: Problem):
             f"Capacity_{centre}",
         )
 
-    # Fleet volume: sum_j sum_k v[k] * x[i,j,k] <= N[i] * Q[i].
-    # Truck counts are fixed data. All shipment variables remain continuous.
+    # Fleet volume: sum_j sum_k v[k] * x[i,j,k] <= F[i] from Excel.
+    # All shipment variables remain continuous.
     for i, centre in enumerate(problem.centres):
         model += (
             pulp.lpSum(float(problem.cargo_volume[k]) * x[centre, region, resource]
@@ -92,13 +92,17 @@ def shipment_values(problem, variables):
 def solve(problem: Problem):
     """Build the model, solve it and return the results used by main.py."""
     model, variables, distances, costs = formulate(problem)
-    # CBC's native RHS-ranging report gives increases/decreases that preserve
-    # its optimal simplex basis. Use a temporary file, not a new results report.
+    # CBC reports RHS and objective-coefficient ranges for the same optimal basis.
+    # Raw solver reports stay in temporary files.
     with TemporaryDirectory(prefix="dmo_rhs_") as temporary:
         report = Path(temporary) / "rhs_ranges.csv"
+        objective_report = Path(temporary) / "objective_ranges.csv"
+        # Match CBC's renamed columns to the original shipment variable names.
+        _, _, _, column_names = model.writeMPS(str(Path(temporary) / "mapping.mps"), rename=True)
         solver = pulp.COIN_CMD(
             msg=False, mip=False, presolve=False,
-            options=["initialSolve", "printingOptions rhsranging", f"solution {report}"],
+            options=["initialSolve", "printingOptions rhsranging", f"solution {report}",
+                     "printingOptions objectiveranging", f"solution {objective_report}"],
         )
         result = model.solve(solver)
         if result.status != pulp.LpSolveStatus.Optimal:
@@ -121,6 +125,24 @@ def solve(problem: Problem):
         if len(rhs_ranges) != model.numConstraints():
             raise RuntimeError("CBC did not report RHS ranges for every constraint")
 
+        objective_ranges = {}
+        with objective_report.open(newline="") as stream:
+            rows = csv.reader(stream)
+            next(rows)
+            for row in rows:
+                index = int(row[0])
+                if row[1] != f"X{index:07d}":
+                    raise RuntimeError("Unexpected CBC variable name in objective-ranging report")
+                increase, decrease = float(row[2]), float(row[4])
+                objective_ranges[column_names[index]] = dict(
+                    allowable_increase=float("inf") if increase >= 1e99 else max(0., increase),
+                    allowable_decrease=float("inf") if decrease >= 1e99 else max(0., decrease),
+                )
+        if len(objective_ranges) != len(variables):
+            raise RuntimeError("CBC did not report objective ranges for every shipment variable")
+        # Use the original (centre, region, resource) keys in the output writer.
+        objective_ranges = {key: objective_ranges[var.name] for key, var in variables.items()}
+
     shipments = shipment_values(problem, variables)
     summary = {
         "status": result.status_str,
@@ -131,4 +153,4 @@ def solve(problem: Problem):
         "functional_constraints": model.numConstraints(),
         "positive_shipments": int(np.count_nonzero(shipments > TOLERANCE)),
     }
-    return shipments, distances, costs, summary, model, rhs_ranges
+    return shipments, distances, costs, summary, model, rhs_ranges, objective_ranges

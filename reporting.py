@@ -29,7 +29,7 @@ def write_results(problem, x, distances, costs, summary, output):
 def write_dual(dual, output):
     write_csv(output / "shadow_prices.csv", dual,
               ["family", "target", "rhs", "activity", "slack", "binding", "shadow_price_eur_per_unit",
-               "allowable_increase", "allowable_decrease"])
+               "allowable_increase", "allowable_decrease", "potential_savings"])
 
 
 def write_fleet(problem, shipments, model, output):
@@ -43,3 +43,21 @@ def write_fleet(problem, shipments, model, output):
         shadow_price_eur_per_volume=float(model.get_constraint_by_name(f"Fleet_{centre}").pi),
     ) for i, centre in enumerate(problem.centres)]
     write_csv(output / "fleet_capacity.csv", rows)
+
+
+def write_objective_sensitivity(problem, shipments, costs, objective_ranges, output):
+    """Save one-at-a-time ranges for the objective's shipment unit costs."""
+    rows = []
+    for i, centre in enumerate(problem.centres):
+        for j, region in enumerate(problem.regions):
+            for k, resource in enumerate(problem.resources):
+                ranges = objective_ranges[centre, region, resource]
+                cost = float(costs[i, j, k])
+                rows.append(dict(
+                    centre_id=centre, region_id=region, resource_id=resource,
+                    units=float(shipments[i, j, k]), cost_eur_per_unit=cost,
+                    **ranges,
+                    minimum_cost_eur_per_unit=cost - ranges["allowable_decrease"],
+                    maximum_cost_eur_per_unit=cost + ranges["allowable_increase"],
+                ))
+    write_csv(output / "objective_coefficients.csv", rows)

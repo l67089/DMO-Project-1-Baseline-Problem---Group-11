@@ -46,17 +46,18 @@ The default workbook is `Data/Data DMO Project 1 Updated.xlsx`.
 
 The workbook is opened read-only. Resource IDs K1–K5 are translated to V1–V5
 in Python and the outputs to match the assignment PDF; Excel is not modified.
-The code recomputes fleet capacity as trucks available × capacity per truck
-and checks the workbook's `fleet_capacity` value when present. Cargo volumes
-and truck capacities use the same space units supplied in the dataset.
+The model reads `fleet_capacity` directly from the workbook. Truck counts and
+capacity per truck are descriptive information only; their product does not
+need to match `fleet_capacity`. Cargo volumes and fleet capacities use the
+same space units supplied in the dataset.
 
 ## Fleet constraint and dual
 
-Let `N[i]` be available trucks, `Q[i]` capacity per truck, and `v[k]` space
-per resource unit. All are fixed inputs. The added constraint is:
+Let `F[i]` be the workbook's fleet capacity and `v[k]` the space per resource
+unit. Both are fixed inputs. The fleet constraint is:
 
 ```text
-sum(j,k) v[k] * x[i,j,k] <= F[i], where F[i] = N[i] * Q[i]
+sum(j,k) v[k] * x[i,j,k] <= F[i]
 ```
 
 The original objective and all demand, stock and handling constraints remain.
@@ -117,6 +118,8 @@ results/
     fleet_capacity.csv  # Trucks, capacity, utilized/remaining volume, utilization %, and price
   dual/
     shadow_prices.csv   # RHS values, slack, shadow prices, and allowable changes
+  sensitivity/
+    objective_coefficients.csv  # Unit-cost coefficients and allowable changes
   plots/
     network_map.png     # Logistics centres and affected regions
     solution_map.png    # Arrows showing routes with positive shipments
@@ -143,3 +146,21 @@ Ranges can differ between optimal bases when multiple bases are available.
 
 The calculation uses PuLP/CBC only. No scenario files or extra solver are added.
 See the [CBC printing-options documentation](https://github.com/coin-or/Cbc/blob/master/doc/cbc-parameters.md#printingoptions).
+
+## Allowable objective-coefficient changes
+
+`sensitivity/objective_coefficients.csv` reports the current unit transport cost,
+shipment quantity, allowable increase/decrease, and minimum/maximum coefficient
+for each centre/region/resource combination. These are CBC's native objective
+ranges, in euros per shipped resource unit. They preserve the current optimal
+basis when one coefficient changes and all other coefficients and inputs stay fixed.
+The current shipment plan remains optimal within that range, although other plans
+may also be optimal. Its total cost changes by `units * coefficient_change`.
+Beyond the range, solve again; the optimal plan may change.
+
+These ranges apply to individual coefficients `distance[i,j] * rate[k]`, not to
+an entire resource rate (which changes several coefficients simultaneously),
+and not to the total objective value. Shadow prices can change within these
+ranges. `inf` denotes no finite basis limit. A negative minimum coefficient is
+mathematically valid; use nonnegative costs when interpreting physical transport
+costs. As with RHS ranges, zero allowances can occur with degenerate bases.

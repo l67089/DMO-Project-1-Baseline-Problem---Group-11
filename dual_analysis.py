@@ -58,6 +58,9 @@ def analyze_dual(problem, model, rhs_ranges):
         # Both allowances refer to this original RHS, with all others fixed.
         # A zero allowance can occur at a degenerate optimal basis.
         entry.update(rhs_ranges[metadata["constraint_name"]])
+        # Keep the signed objective change requested; a zero price gives zero
+        # even when the allowable increase is unbounded (infinity).
+        entry["potential_savings"] = entry["allowable_increase"] * price if price != 0 else 0.0
 
         constraints.append(entry)
 

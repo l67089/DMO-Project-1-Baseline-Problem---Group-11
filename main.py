@@ -6,7 +6,7 @@ from pathlib import Path
 
 from model_data import read_data
 from optimization import solve
-from reporting import write_dual, write_fleet, write_results
+from reporting import write_dual, write_fleet, write_results, write_objective_sensitivity
 from visualization import plot_network
 from dual_analysis import analyze_dual
 
@@ -20,11 +20,12 @@ def main():
     args = parser.parse_args()
 
     problem = read_data(args.data)
-    x, distances, costs, summary, model, rhs_ranges = solve(problem)
+    x, distances, costs, summary, model, rhs_ranges, objective_ranges = solve(problem)
     dual = analyze_dual(problem, model, rhs_ranges)
 
     write_results(problem, x, distances, costs, summary, args.output / "solution")
     write_dual(dual, args.output / "dual")
+    write_objective_sensitivity(problem, x, costs, objective_ranges, args.output / "sensitivity")
     write_fleet(problem, x, model, args.output / "solution")
     plot_network(problem, args.output / "plots")
     plot_network(problem, args.output / "plots", shipments=x)
