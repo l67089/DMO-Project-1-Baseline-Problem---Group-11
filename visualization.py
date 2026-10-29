@@ -11,7 +11,7 @@ from model_data import Problem
 from optimization import TOLERANCE
 
 
-def plot_network(problem: Problem, output: Path, shipments=None) -> Path:
+def plot_network(problem: Problem, output: Path, shipments=None, suffix="") -> Path:
     """Save a PNG with L/R markers, a legend and coordinate axes in kilometres.
 
     Equal axis scales preserve Euclidean geometry. Rendering uses a file-based
@@ -68,7 +68,7 @@ def plot_network(problem: Problem, output: Path, shipments=None) -> Path:
     axes.legend(handles=handles, loc="lower center", bbox_to_anchor=(0.5, 1.02),
                 ncol=2, frameon=False, fontsize=10)
 
-    png_path = output / ("solution_map.png" if shipments is not None else "network_map.png")
+    png_path = output / (f"solution_map{suffix}.png" if shipments is not None else f"network_map{suffix}.png")
     figure.savefig(png_path, dpi=200, bbox_inches="tight", pad_inches=0.15)
     figure.clear()
     return png_path

@@ -1,0 +1,9 @@
+{
+  "status": "Optimal",
+  "solver": "PuLP / CBC",
+  "objective_eur": 2327.3344099520377,
+  "dual_objective_eur": 2327.334404819,
+  "variables": 90,
+  "functional_constraints": 51,
+  "positive_shipments": 36
+}

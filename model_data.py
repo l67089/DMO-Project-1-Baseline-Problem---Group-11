@@ -43,7 +43,7 @@ def read_data(path: Path) -> Problem:
         header = next(rows)
 
         # Pair each column name with its value to create one dictionary per row.
-        # For example: {"centre_id": "L1", "handling_capacity_equiv": 690, ...}.
+        # For example: {"centre_id": "L1", "handling_capacity": 690, ...}.
         records = []
         for row in rows:
             if any(value is not None for value in row):  # Skip empty rows.
@@ -61,15 +61,8 @@ def read_data(path: Path) -> Problem:
         # The values above stay in memory after the workbook is closed.
         workbook.close()
 
-    # The workbook uses K1-K5; use V1-V5 in Python to match the PDF's set V.
-    # Update the in-memory dictionaries consistently across all three tables.
-    for records in (resources, supply, demand):
-        for row in records:
-            resource_id = row["resource_id"]
-            if resource_id.startswith("K"):
-                row["resource_id"] = "V" + resource_id[1:]
-
-    # Extract the sets. Their order determines the positions in every array.
+    # Read IDs exactly as provided in the workbook, including V1-V5.
+    # Their order determines the positions in every array.
     # Python positions start at 0: centre 0 is L1, resource 0 is V1.
     centre_ids = tuple(row["centre_id"] for row in centres)
     region_ids = tuple(row["region_id"] for row in regions)
@@ -94,8 +87,8 @@ def read_data(path: Path) -> Problem:
         region_xy=np.array([[row["x_km"], row["y_km"]] for row in regions], dtype=float),
         supply=matrix(supply, "centre_id", centre_ids, "available_units"),
         demand=matrix(demand, "region_id", region_ids, "minimum_units"),
-        capacity=np.array([row["handling_capacity_equiv"] for row in centres], dtype=float),
-        handling=np.array([row["handling_equiv_per_unit"] for row in resources], dtype=float),
+        capacity=np.array([row["handling_capacity"] for row in centres], dtype=float),
+        handling=np.array([row["handling_per_unit"] for row in resources], dtype=float),
         rate=np.array([row["transport_rate_eur_per_unit_km"] for row in resources], dtype=float),
         trucks_available=np.array([row["trucks_available"] for row in centres], dtype=float),
         truck_capacity=np.array([row["truck_capacity"] for row in centres], dtype=float),

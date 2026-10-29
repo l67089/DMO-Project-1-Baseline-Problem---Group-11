@@ -34,18 +34,27 @@ and routes used by the optimal solution.
 
 ## Input data
 
-The default workbook is `Data/Data DMO Project 1 Updated.xlsx`.
+Select the workbook in `config.yml`:
+
+```yaml
+dataset: "Data/Data DMO Project 1.xlsx"
+```
+
+To use the alternative dataset, change that value to
+`"Data/Data DMO Project 1 ALTERNATIVE.xlsx"`. Paths in the configuration are
+relative to `config.yml`.
 
 | Sheet | Contents |
 | --- | --- |
-| Centres | Centre IDs, coordinates, handling capacity, `trucks_available`, `truck_capacity`, and `fleet_capacity` |
+| Centres | Centre IDs, coordinates, `handling_capacity`, `trucks_available`, `truck_capacity`, and `fleet_capacity` |
 | Regions | Region IDs and coordinates |
-| Resources | Resource IDs, handling factors, transport rates, and `cargo_volume_per_unit` |
+| Resources | Resource IDs, `handling_per_unit`, transport rates, and `cargo_volume_per_unit` |
 | Supply | Available stock for each centre/resource pair |
 | Demand | Minimum requirements for each region/resource pair |
 
-The workbook is opened read-only. Resource IDs K1–K5 are translated to V1–V5
-in Python and the outputs to match the assignment PDF; Excel is not modified.
+The workbook is opened read-only. Centre, region and resource IDs are read
+directly from the data (including V1–V5) and used consistently across all sheets
+and outputs; Excel is not modified.
 The model reads `fleet_capacity` directly from the workbook. Truck counts and
 capacity per truck are descriptive information only; their product does not
 need to match `fleet_capacity`. Cargo volumes and fleet capacities use the
@@ -89,7 +98,8 @@ From the project folder, run:
 .venv/bin/python main.py
 ```
 
-To select another workbook or results folder:
+The selected workbook is printed at the start of each run. To override the
+configured dataset or select another results folder:
 
 ```sh
 .venv/bin/python main.py --data "Data/another_workbook.xlsx" --output results
@@ -99,7 +109,8 @@ To select another workbook or results folder:
 
 | Script | Responsibility |
 | --- | --- |
-| `main.py` | Runs the complete workflow |
+| `config.yml` | Selects the input workbook |
+| `main.py` | Reads the configuration and runs the complete workflow |
 | `model_data.py` | Loads the workbook and defines sets and parameters |
 | `optimization.py` | Builds and solves the PuLP/CBC model |
 | `dual_analysis.py` | Extracts constraint activity, slack, and shadow prices |
@@ -108,7 +119,14 @@ To select another workbook or results folder:
 
 ## Results
 
-Each run saves the following files:
+Each run saves the following files. When the selected workbook is
+`Data DMO Project 1 ALTERNATIVE.xlsx`, every result filename receives
+`_ALTERNATIVE` before its extension (for example, `shipments_ALTERNATIVE.csv`,
+`summary_ALTERNATIVE.json`, and `solution_map_ALTERNATIVE.png`). This applies
+to both configuration and `--data` selection; the folder structure stays the same.
+Results from the two datasets can coexist.
+
+Default dataset filenames:
 
 ```text
 results/

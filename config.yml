@@ -1,0 +1,3 @@
+# Select the workbook used when running main.py.
+dataset: "Data/Data DMO Project 1 ALTERNATIVE.xlsx"
+# Alternative: "Data/Data DMO Project 1 ALTERNATIVE.xlsx"
